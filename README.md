@@ -72,6 +72,6 @@ Participants' submissions are expected to be a .zip file containing a .tsv file 
 **Note:** Codalab requires that each submission is inside a .zip file.
 
 ## Contact
-Marvin M. Agüero-Torales (marvinmatias.aguerotorrales@fujitsu.com)
-Antonio Miranda (antoniomiresc@gmail.com)
++ Marvin M. Agüero-Torales (marvinmatias.aguerotorrales@fujitsu.com)
++ Antonio Miranda (antoniomiresc@gmail.com)
 ```
