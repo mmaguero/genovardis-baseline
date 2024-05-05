@@ -4,6 +4,7 @@
 Created on Mon Jan 13 18:10:50 2020
 
 @author: antonio
+modified: @mmaguero
 """
 import unicodedata
 import string
@@ -43,8 +44,9 @@ def format_ann_info(df_annot, min_upper):
               and the words it has normalized.
             annotations_final: set of word in annotations.
     '''
-    df_annot.columns = ['filename', 'pos0', 'pos1', 'label', 'span']
-    df_annot = df_annot.drop(['pos0', 'pos1'], axis=1)
+    #df_annot.columns = ['filename', 'pos0', 'pos1', 'label', 'span']
+    df_annot.columns = ['pmid', 'filename', 'mark', 'label', 'offset1', 'offset2', 'span']
+    df_annot = df_annot.drop(['mark', 'offset1', 'offset2'], axis=1)
  
     set_annotations = set(df_annot.span)
     

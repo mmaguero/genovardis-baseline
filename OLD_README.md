@@ -62,7 +62,12 @@ Both scripts accept the same two parameters:
 + --sub_track (-t) specifies the task we are using the system for. In ProfNER Track, there are 2 tasks (1 for tweet classification and 2 for NER).
 
 ```
-$> python lookup.py -gs gold_standard.tsv -data datapath/ -out predictions.tsv -t TASK_NUMBER
+$> python lookup.py -gs gold_standard.tsv -data datapath/ -out predictions.tsv -t 2
+```
+
+Example:
+```
+$> python lookup.py -gs ../train_dev/annotations/train_annotation.tsv -data data/dev_text.tsv -out lookup_dev_predictions.tsv -t 2
 ```
 
 ## Contact

@@ -4,6 +4,7 @@
 Created on Mon Jan 13 16:39:02 2020
 
 @author: antonio
+modified: @mmaguero
 """
 
 import re
@@ -77,83 +78,87 @@ def find_predictions(datapath, min_upper, annot2label, annot2annot_processed,
                          annotations_final, df_annot):
     start = time.time()
     
+    df = pd.read_csv(datapath, sep='\t')
     predictions_dict = {}
-    for root, dirs, files in os.walk(datapath):
-        for filename in files:
-            print(filename)
+    #for root, dirs, files in os.walk(datapath):
+    #for filename in files:
+    for index, row in df.iterrows():
+        filename = row['filename']
+        print(filename)
+        
+        #### 0. Initialize, etc. ####
+        predictions = []
+        pos_matrix = []
             
-            #### 0. Initialize, etc. ####
-            predictions = []
-            pos_matrix = []
-             
-            #### 1. Get text ####
-            txt = open(os.path.join(root,filename)).read()
-    
-            #### 2. Format text information ####
-            words_final, words_processed2pos = format_text_info(txt, min_upper)
-            
-            #### 3. Intersection ####
-            # Generate candidates
-            words_in_annots = words_final.intersection(annotations_final)            
-             
-            #### 4. For every token of the intersection, get all original 
-            #### annotations associated to it and all matches in text.
-            #### Then, check surroundings of all those matches to check if any
-            #### of the original annotations is in the text ####
-            # For every token
-            for match in words_in_annots:
-                
-                # Get annotations where this token is present
-                original_annotations = [k for k,v in annot2annot_processed.items() if match in v]
-                # Get text locations where this token is present
-                match_text_locations = words_processed2pos[match]
+        #### 1. Get text ####
+        #txt = open(os.path.join(root,filename)).read()
+        txt = row['text']
 
-                # For every original annotation where this token is present:
-                for original_annot in original_annotations:
-                    original_label = annot2label[original_annot]
-                    n_chars = len(original_annot)
-                    n_words = len(original_annot.split())
-                    
-                    if len(original_annot.split()) > 1:
-                        # For every match of the token in text, check its 
-                        # surroundings and generate predictions
+        #### 2. Format text information ####
+        words_final, words_processed2pos = format_text_info(txt, min_upper)
+        
+        #### 3. Intersection ####
+        # Generate candidates
+        words_in_annots = words_final.intersection(annotations_final)            
+            
+        #### 4. For every token of the intersection, get all original 
+        #### annotations associated to it and all matches in text.
+        #### Then, check surroundings of all those matches to check if any
+        #### of the original annotations is in the text ####
+        # For every token
+        for match in words_in_annots:
+            
+            # Get annotations where this token is present
+            original_annotations = [k for k,v in annot2annot_processed.items() if match in v]
+            # Get text locations where this token is present
+            match_text_locations = words_processed2pos[match]
+
+            # For every original annotation where this token is present:
+            for original_annot in original_annotations:
+                original_label = annot2label[original_annot]
+                n_chars = len(original_annot)
+                n_words = len(original_annot.split())
+                
+                if len(original_annot.split()) > 1:
+                    # For every match of the token in text, check its 
+                    # surroundings and generate predictions
+                    try:
+                        for span in match_text_locations:   
+                            predictions, pos_matrix = \
+                                check_surroundings(txt, span,original_annot,
+                                                    n_chars, n_words,original_label,
+                                                    predictions, pos_matrix)
+                    except:
+                        pass
+                                                            
+                # If original_annotation is just the token, no need to 
+                # check the surroundings
+                elif len(original_annot.split()) == 1:
+                    for span in match_text_locations:
+                        # Check span is surrounded by spaces or punctuation signs &
+                        # span is not contained in a previously stored prediction
                         try:
-                            for span in match_text_locations:   
+                            if (((txt[span[0]-1].isalnum() == False) & 
+                                    (txt[span[1]].isalnum()==False)) & 
+                                (not any([(item[0]<=span[0]) & (span[1]<=item[1]) 
+                                            for item in pos_matrix]))):
+                                
+                                # STORE PREDICTION and eliminate old predictions
+                                # contained in the new one
                                 predictions, pos_matrix = \
-                                    check_surroundings(txt, span,original_annot,
-                                                       n_chars, n_words,original_label,
-                                                       predictions, pos_matrix)
+                                    store_prediction(pos_matrix, predictions,
+                                                        span[0], span[1],
+                                                        original_label, df_annot,
+                                                        original_annot, txt)
                         except:
                             pass
-                                                              
-                    # If original_annotation is just the token, no need to 
-                    # check the surroundings
-                    elif len(original_annot.split()) == 1:
-                        for span in match_text_locations:
-                            # Check span is surrounded by spaces or punctuation signs &
-                            # span is not contained in a previously stored prediction
-                            try:
-                                if (((txt[span[0]-1].isalnum() == False) & 
-                                     (txt[span[1]].isalnum()==False)) & 
-                                    (not any([(item[0]<=span[0]) & (span[1]<=item[1]) 
-                                              for item in pos_matrix]))):
-                                    
-                                    # STORE PREDICTION and eliminate old predictions
-                                    # contained in the new one
-                                 predictions, pos_matrix = \
-                                        store_prediction(pos_matrix, predictions,
-                                                         span[0], span[1],
-                                                         original_label, df_annot,
-                                                         original_annot, txt)
-                            except:
-                                pass
- 
-            #### 5. Remove duplicates ####
-            predictions.sort()
-            predictions_no_duplicates = [k for k,_ in itertools.groupby(predictions)]
-                        
-            # Final appends
-            predictions_dict[filename] = predictions_no_duplicates
+
+        #### 5. Remove duplicates ####
+        predictions.sort()
+        predictions_no_duplicates = [k for k,_ in itertools.groupby(predictions)]
+                    
+        # Final appends
+        predictions_dict[filename] = predictions_no_duplicates
                 
     total_t = time.time() - start
     
@@ -197,7 +202,7 @@ if __name__ == '__main__':
         df_dev = parse_tsv(dev_path, sub_track)
         df_annot = pd.concat([df_annot, df_dev], ignore_index=True)
             
-    df_annot = df_annot.loc[df_annot['type'].isin(['PROFESION', 'SITUACION_LABORAL'])]
+    #df_annot = df_annot.loc[df_annot['type'].isin(['PROFESION', 'SITUACION_LABORAL'])]
     
     ######## FORMAT ANN INFORMATION #########
     print('\n\nExtracting original annotations...\n\n')
@@ -218,15 +223,18 @@ if __name__ == '__main__':
         if predictions_dict[filename]:
             df_this = pd.DataFrame(predictions_dict[filename], 
                                    columns=['ref', 'pos0', 'pos1', 'label'])
-            df_this['doc'] = filename[:-4] # remove file extension .txt
-            
-            df = df.append(df_this)
+            #df_this['doc'] = filename[:-4] # remove file extension .txt
+            df_this['doc'] = filename
+
+            df = df._append(df_this)
     
-    files_to_predict = set(map(lambda x: '.'.join(x.split('.')[:-1]), os.listdir(data_path)))
+    #files_to_predict = set(map(lambda x: '.'.join(x.split('.')[:-1]), os.listdir(data_path))) 
+    aux_df = pd.read_csv(data_path, sep='\t')
+    files_to_predict = set(aux_df['filename'].tolist())
     files_annotated = set(df.doc.tolist())
     unannotated = files_to_predict - files_annotated
     
-    if sub_track == 1:
+    """if sub_track == 1:
         df_final = df[['doc']].drop_duplicates().copy()
         df_final['label'] = 1
         df_no_pred = pd.DataFrame(dict(zip(unannotated, [0]*len(unannotated))).items(), 
@@ -234,18 +242,22 @@ if __name__ == '__main__':
         df_final = df_final.append(df_no_pred)
         df_final.columns = ['tweet_id', 'label']
         
-    elif sub_track == 2: 
+    el"""
+    if sub_track == 2: 
         df_final = df[['doc', 'pos0','pos1','label','ref']].copy()
         df_no_pred = pd.DataFrame(dict(zip(unannotated, ['-']*len(unannotated))).items(), 
                                   columns=['doc', 'pos0'])
         df_no_pred['pos1']  = '-'
         df_no_pred['label']  = '-'
         df_no_pred['ref']  = '-'
-        df_final = df_final.append(df_no_pred)
-        df_final.columns = ['tweet_id', 'begin', 'end', 'type', 'extraction']
+        df_final = df_final._append(df_no_pred)
+        df_final['doc'] = df_final['doc'].apply(lambda f: f[:-4] + '.ann') # replace .txt, mandatory
+        df_final['pmid'] = df_final['doc'].apply(lambda f: str(f.split('-')[1])[:-4])
+        df_final.columns = ['filename', 'offset1', 'offset2', 'label', 'span', 'pmid']
+        df_final_format = df_final[['pmid', 'filename', 'label', 'offset1', 'offset2', 'span']].copy()
     else:
         raise ValueError('Incorrect sub-track value')
         
     ######## SAVE OUTPUT ########
-    df_final.to_csv(out_path, sep='\t', index=False, header=True)
+    df_final_format.to_csv(out_path, sep='\t', index=False, header=True)
     
