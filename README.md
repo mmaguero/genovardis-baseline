@@ -1,4 +1,4 @@
-# GenoVardis Competition - ProfNER-ST Baseline 1 - Lookup
+# GenoVardis Competition - Baseline 1 - Lookup
 
 ## Introduction
 This system serves the purpose of extracting information from a set of annotated documents and subsequently verifying whether these extracted annotations are present in a new set of documents. This system is established as a baseline for the **GenoVardis shared task**. For evaluation, please refer to the competition on CodaLab: [GenoVardis Competition](https://codalab.lisn.upsaclay.fr/competitions/17733).
